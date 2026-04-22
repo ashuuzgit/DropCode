@@ -1,15 +1,14 @@
 const multer = require('multer');
-const { fileTypeFromBuffer } = require('file-type');
 const { isAllowedType } = require('../utils/fileTypes');
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-  fileFilter: async (req, file, cb) => {
+  fileFilter: (req, file, cb) => {
     try {
-      const buffer = file.buffer;
-      const type = await fileTypeFromBuffer(buffer);
-      if (!type || !isAllowedType(type.mime)) {
+      // Note: in multer fileFilter, file.buffer is not available yet.
+      // Validate using the declared MIME type and do deep checks later if needed.
+      if (!isAllowedType(file.mimetype)) {
         return cb(new Error('Invalid file type'));
       }
       cb(null, true);

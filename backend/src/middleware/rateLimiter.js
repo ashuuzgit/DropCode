@@ -2,15 +2,21 @@ const redis = require('../config/redis');
 
 const rateLimit = (key, windowMs, maxRequests) => {
   return async (req, res, next) => {
-    const clientKey = `${key}:${req.ip}`;
-    const requests = await redis.incr(clientKey);
-    if (requests === 1) {
-      await redis.expire(clientKey, windowMs / 1000);
+    try {
+      const clientKey = `${key}:${req.ip}`;
+      const requests = await redis.incr(clientKey);
+      if (requests === 1) {
+        await redis.expire(clientKey, windowMs / 1000);
+      }
+      if (requests > maxRequests) {
+        return res.status(429).json({ error: 'Too many requests' });
+      }
+      next();
+    } catch (error) {
+      // Graceful fallback: if Redis is down, do not block core app flows.
+      console.error('Rate limiter fallback (Redis unavailable):', error.message);
+      next();
     }
-    if (requests > maxRequests) {
-      return res.status(429).json({ error: 'Too many requests' });
-    }
-    next();
   };
 };
 

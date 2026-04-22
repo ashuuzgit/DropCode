@@ -4,9 +4,14 @@ const { getResourceType } = require('../utils/fileTypes');
 
 const uploadFiles = async (req, res) => {
   try {
-    const { code } = req.body;
-    const folder = await Folder.findOne({ code });
+    const { code, editToken } = req.body;
+    const folder = await Folder.findOne({ code }).select('+editToken');
     if (!folder) return res.status(404).json({ error: 'Folder not found' });
+    
+    // Security: Validate editToken
+    if (!editToken || folder.editToken !== editToken) {
+      return res.status(403).json({ error: 'Invalid or missing edit token' });
+    }
 
     const uploadedFiles = [];
     for (const file of req.files) {
@@ -27,7 +32,12 @@ const uploadFiles = async (req, res) => {
     await folder.save();
     res.json({ files: uploadedFiles });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Upload error:', err);
+    const message =
+      err?.message ||
+      err?.error?.message ||
+      (typeof err === 'string' ? err : 'Upload failed');
+    res.status(500).json({ error: message });
   }
 };
 
